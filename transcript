@@ -1,0 +1,25 @@
+# vsim -c -lib work tb_ai_accelerator_top -do "run -all; quit -code 0" 
+# Start time: 14:49:00 on Aug 08,2026
+# Loading sv_std.std
+# Loading work.ai_accel_pkg
+# Loading work.tb_ai_accelerator_top
+# Loading work.ai_accelerator_top
+# Loading work.apb_accel_regs
+# Loading work.accel_controller
+# Loading work.simple_dma
+# Loading work.scratchpad_sram
+# Loading work.operand_feeder
+# Loading work.compute_controller
+# Loading work.mac_array_4x4
+# Loading work.output_tile_writer
+# Loading work.requant_relu
+# Loading work.accel_status_irq
+# Loading work.perf_counters
+# Loading work.mac_pe
+# ** Warning: (vsim-8311) System Verilog assertions are supported only in Questasim.
+# run -all
+# tb_ai_accelerator_top PASS (44 self-checks)
+# ** Note: $finish    : tb/unit/tb_ai_accelerator_top.sv(276)
+#    Time: 1410 ns  Iteration: 1  Instance: /tb_ai_accelerator_top
+# End time: 14:49:01 on Aug 08,2026, Elapsed time: 0:00:01
+# Errors: 0, Warnings: 1
