@@ -18,14 +18,14 @@ This document fixes the initial microarchitecture and the boundaries between mod
 
 ## 2. Programming and execution model
 
-Software programs dimensions, external base addresses, output formatting, and the requantization shift through APB. Matrices are tightly packed:
+Software programs dimensions, external base addresses, output formatting, and the requantization shift through APB. This baseline maps one logical matrix element to one 32-bit external-memory word. Signed INT8 inputs occupy the low byte; INT8 outputs are sign-extended to 32 bits:
 
-- `A[m][k]` byte address: `A_BASE + (m*K + k)`
-- `B[k][n]` byte address: `B_BASE + (k*N + n)`
+- `A[m][k]` byte address: `A_BASE + 4*(m*K + k)`
+- `B[k][n]` byte address: `B_BASE + 4*(k*N + n)`
 - INT32 `C[m][n]` byte address: `C_BASE + 4*(m*N + n)`
-- INT8 `C[m][n]` byte address: `C_BASE + (m*N + n)`
+- INT8 `C[m][n]` byte address: `C_BASE + 4*(m*N + n)`
 
-All base addresses must be aligned to the natural element size used by the corresponding DMA transfer. The first implementation may use byte enables to handle unaligned INT8 tile edges, but software-visible matrix layout remains tightly packed.
+All base addresses must be 32-bit aligned. Packing four INT8 elements into one external-memory word is a possible future bandwidth optimization, not part of the current interface.
 
 Writing `CTRL.START` when the accelerator is idle snapshots all job configuration registers. Later APB writes do not affect the active job. A start request while busy is rejected and records an error; it never restarts or corrupts the active job. Zero-valued `M`, `N`, or `K` is an invalid job.
 

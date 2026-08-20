@@ -203,7 +203,7 @@ input  logic                         relu_enable;
 output logic signed [7:0]            out_data [0:3][0:3];
 ```
 
-`requant_relu` is combinational and connects directly to the 4x4 accumulator array. ReLU is applied before the arithmetic right shift and signed INT8 saturation. When `quant_enable=0`, the shift is bypassed, but ReLU and saturation still apply. Tile masks are carried separately by the controller.
+`requant_relu` is combinational and connects directly to the 4x4 accumulator array. ReLU is applied before the arithmetic right shift and signed INT8 saturation. Within this conversion block, `quant_enable=0` bypasses only the shift. At the integrated output writer, `quant_enable=1` selects this INT8 result; `quant_enable=0` selects the full INT32 accumulator with optional ReLU and no saturation. Tile masks are carried separately by the controller.
 
 ## 11. Quantization unit to DMA writeback
 

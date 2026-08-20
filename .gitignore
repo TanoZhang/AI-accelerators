@@ -1,0 +1,5 @@
+work/
+transcript
+verification/logs/
+__pycache__/
+*.pyc

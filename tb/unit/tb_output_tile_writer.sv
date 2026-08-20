@@ -114,6 +114,8 @@ module tb_output_tile_writer;
               quantized = quant_reference(tile_data[row][col], relu_enable,
                                           quant_shift);
               expected_data[expected_writes] = {{24{quantized[7]}}, quantized};
+            end else if (relu_enable && (tile_data[row][col] < 0)) begin
+              expected_data[expected_writes] = 32'd0;
             end else begin
               expected_data[expected_writes] = $unsigned(tile_data[row][col]);
             end

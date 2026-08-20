@@ -93,6 +93,8 @@ module output_tile_writer #(
     if (quant_enable_q) begin
       sram_wr_data = {{24{quant_data[local_row][local_col][7]}},
                       quant_data[local_row][local_col]};
+    end else if (relu_enable_q && (tile_data_q[local_row][local_col] < 0)) begin
+      sram_wr_data = 32'd0;
     end else begin
       sram_wr_data = $unsigned(tile_data_q[local_row][local_col]);
     end

@@ -1,0 +1,7 @@
+integrated_scenario,result
+zero_dimension,PASS
+misaligned_address,PASS
+dma_read_response_error,PASS
+dma_write_response_error,PASS
+start_while_busy_rejected_without_corruption,PASS
+clean_recovery_without_reset,PASS

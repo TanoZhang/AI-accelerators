@@ -62,12 +62,12 @@ All 32 bits hold an external byte address. Alignment validation is performed by 
 
 | Bits | Field | Access | Description |
 |---:|---|:---:|---|
-| 0 | `QUANT_ENABLE` | RW | Enable arithmetic right shift |
+| 0 | `QUANT_ENABLE` | RW | Select requantized signed INT8 output and enable arithmetic right shift |
 | 1 | `RELU_ENABLE` | RW | Enable ReLU before shifting |
 | 6:2 | `QUANT_SHIFT` | RW | Shift amount from 0 through 31 |
 | 31:7 | Reserved | - | Read zero |
 
-When quantization is disabled, the shift is bypassed. ReLU and INT8 saturation remain active in the output formatter.
+When quantization is disabled, output is signed INT32: the shift and INT8 saturation are bypassed. ReLU, when enabled, applies to both INT32 and INT8 output modes.
 
 ### `INT_ENABLE` (`0x24`)
 
