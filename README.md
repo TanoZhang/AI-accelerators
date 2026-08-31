@@ -1,49 +1,44 @@
 # 4x4 INT8 matrix accelerator
 
-Synthesizable SystemVerilog accelerator with a 4x4 output-stationary MAC array.
+SystemVerilog implementation of a small matrix-multiply accelerator.
 
-## RTL
+## Design
 
-- Signed INT8 inputs and INT32 accumulation
-- APB4 control/status registers
-- Ready/valid DMA with error handling
-- Replicated operand scratchpads with four parallel read lanes
-- Two-entry elastic operand feeder
-- INT32 or saturated INT8 output with optional ReLU
-- Sticky interrupts and performance counters
+- 4x4 output-stationary MAC array
+- Signed INT8 input and INT32 accumulation
+- APB control and status registers
+- Ready/valid DMA interface
+- Multi-read operand scratchpads
+- Quantized INT8 or INT32 output with optional ReLU
+- Interrupts and performance counters
 
-The datapath accepts one 16-MAC outer product per cycle after pipeline fill.
+The operand path reads one activation vector and one weight vector in parallel.
+A small FIFO keeps the MAC input stable when the downstream logic stalls.
 
 ## Verification
 
-- 15 module-level RTL benches
-- 64 Python-referenced system tests: 11 directed and 53 fixed-seed random
-- 6 error and recovery tests
-- Matrix dimensions 1-15, signed corner cases, saturation, ReLU, DMA stalls,
-  address checks, INT8/INT32 output, and counter checks
+The RTL is tested at module and system level. System tests use a Python
+reference model and cover signed values, edge tiles, output saturation, DMA
+stalls, invalid configurations, and recovery after errors.
 
-See [verification_report.md](verification/results/verification_report.md) and
+Results are available in
+[verification_report.md](verification/results/verification_report.md) and
 [performance.csv](verification/results/performance.csv).
 
-## FPGA result
+## FPGA
 
-The RTL was compiled and run on a Terasic DE25-Standard Rev.D at 50 MHz. The
-fabric self-test configures the accelerator over APB, services DMA from on-chip
-memory, and checks a 2x2 matrix multiply in hardware.
+The design was compiled and tested on a Terasic DE25-Standard Rev.D at 50 MHz.
+The board test configures the accelerator through APB, services DMA requests
+from on-chip memory, and checks the output matrix in hardware.
 
-- Board result: PASS, four INT32 results matched
-- Hardware cycle count: 78
-- TimeQuest Fmax: 178.64 MHz
-- Resources: 2,994 ALMs, 5,154 registers, 21 DSP blocks, 9 M20Ks
+Build and measured results are documented under
+[fpga/de25_standard](fpga/de25_standard/) and
+[de25_standard_results.md](verification/fpga/de25_standard_results.md).
 
-Measured data is recorded in
-[de25_standard_results.md](verification/fpga/de25_standard_results.md). HPS and
-external DDR are not used by this board test.
-
-## Run regression
+## Run
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\run_regression.ps1
 ```
 
-Requires Python 3, NumPy, Matplotlib, and ModelSim (`vlib`, `vlog`, `vsim`).
+Python, NumPy, Matplotlib, and ModelSim are required.
