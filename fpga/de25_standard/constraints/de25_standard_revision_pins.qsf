@@ -1,0 +1,96 @@
+# Terasic DE25-Standard Rev.D board assignments.
+# Source: DE25-Standard User Manual, Rev.D v1.5, Tables 3-9 and 3-11
+# through 3-14 (November 21, 2025).
+
+# 50 MHz user clock. The RTL port CLOCK_50 is connected to board CLOCK0_50.
+set_location_assignment PIN_CH128 -to CLOCK_50
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to CLOCK_50
+
+# Active-low push-buttons.
+set_location_assignment PIN_BW59 -to {KEY[0]}
+set_location_assignment PIN_CA59 -to {KEY[1]}
+set_location_assignment PIN_CF71 -to {KEY[2]}
+set_location_assignment PIN_CH71 -to {KEY[3]}
+set_instance_assignment -name IO_STANDARD "1.2 V" -to {KEY[*]}
+
+# Slide switches.
+set_location_assignment PIN_BM62 -to {SW[0]}
+set_location_assignment PIN_BP62 -to {SW[1]}
+set_location_assignment PIN_BH62 -to {SW[2]}
+set_location_assignment PIN_BH59 -to {SW[3]}
+set_location_assignment PIN_BM59 -to {SW[4]}
+set_location_assignment PIN_BK59 -to {SW[5]}
+set_location_assignment PIN_BU62 -to {SW[6]}
+set_location_assignment PIN_CF59 -to {SW[7]}
+set_location_assignment PIN_BU59 -to {SW[8]}
+set_location_assignment PIN_BR59 -to {SW[9]}
+set_instance_assignment -name IO_STANDARD "1.2 V" -to {SW[*]}
+
+# Active-low red LEDs.
+set_location_assignment PIN_CC71 -to {LEDR[0]}
+set_location_assignment PIN_BH78 -to {LEDR[1]}
+set_location_assignment PIN_CH69 -to {LEDR[2]}
+set_location_assignment PIN_CF69 -to {LEDR[3]}
+set_location_assignment PIN_CA62 -to {LEDR[4]}
+set_location_assignment PIN_CC62 -to {LEDR[5]}
+set_location_assignment PIN_CF62 -to {LEDR[6]}
+set_location_assignment PIN_BM69 -to {LEDR[7]}
+set_location_assignment PIN_CA71 -to {LEDR[8]}
+set_location_assignment PIN_BR62 -to {LEDR[9]}
+set_instance_assignment -name IO_STANDARD "1.2 V" -to {LEDR[*]}
+
+# Active-low common-anode seven-segment displays.
+set_location_assignment PIN_BP81 -to {HEX0[0]}
+set_location_assignment PIN_BM81 -to {HEX0[1]}
+set_location_assignment PIN_BM89 -to {HEX0[2]}
+set_location_assignment PIN_BK89 -to {HEX0[3]}
+set_location_assignment PIN_BH92 -to {HEX0[4]}
+set_location_assignment PIN_BM92 -to {HEX0[5]}
+set_location_assignment PIN_BP92 -to {HEX0[6]}
+
+set_location_assignment PIN_CA78 -to {HEX1[0]}
+set_location_assignment PIN_BW78 -to {HEX1[1]}
+set_location_assignment PIN_BU78 -to {HEX1[2]}
+set_location_assignment PIN_BR78 -to {HEX1[3]}
+set_location_assignment PIN_BU81 -to {HEX1[4]}
+set_location_assignment PIN_BR81 -to {HEX1[5]}
+set_location_assignment PIN_CA89 -to {HEX1[6]}
+
+set_location_assignment PIN_BW89 -to {HEX2[0]}
+set_location_assignment PIN_BU92 -to {HEX2[1]}
+set_location_assignment PIN_BR92 -to {HEX2[2]}
+set_location_assignment PIN_BU89 -to {HEX2[3]}
+set_location_assignment PIN_BR89 -to {HEX2[4]}
+set_location_assignment PIN_CF78 -to {HEX2[5]}
+set_location_assignment PIN_CH78 -to {HEX2[6]}
+
+set_location_assignment PIN_CC81 -to {HEX3[0]}
+set_location_assignment PIN_CA81 -to {HEX3[1]}
+set_location_assignment PIN_CH81 -to {HEX3[2]}
+set_location_assignment PIN_CF81 -to {HEX3[3]}
+set_location_assignment PIN_CF89 -to {HEX3[4]}
+set_location_assignment PIN_CH89 -to {HEX3[5]}
+set_location_assignment PIN_CH92 -to {HEX3[6]}
+
+set_location_assignment PIN_CF92 -to {HEX4[0]}
+set_location_assignment PIN_CA92 -to {HEX4[1]}
+set_location_assignment PIN_CC92 -to {HEX4[2]}
+set_location_assignment PIN_CL76 -to {HEX4[3]}
+set_location_assignment PIN_CK76 -to {HEX4[4]}
+set_location_assignment PIN_CL82 -to {HEX4[5]}
+set_location_assignment PIN_CK80 -to {HEX4[6]}
+
+set_location_assignment PIN_CL85 -to {HEX5[0]}
+set_location_assignment PIN_CK85 -to {HEX5[1]}
+set_location_assignment PIN_BK69 -to {HEX5[2]}
+set_location_assignment PIN_BP71 -to {HEX5[3]}
+set_location_assignment PIN_BH89 -to {HEX5[4]}
+set_location_assignment PIN_BH71 -to {HEX5[5]}
+set_location_assignment PIN_CH62 -to {HEX5[6]}
+
+set_instance_assignment -name IO_STANDARD "1.2 V" -to {HEX0[*]}
+set_instance_assignment -name IO_STANDARD "1.2 V" -to {HEX1[*]}
+set_instance_assignment -name IO_STANDARD "1.2 V" -to {HEX2[*]}
+set_instance_assignment -name IO_STANDARD "1.2 V" -to {HEX3[*]}
+set_instance_assignment -name IO_STANDARD "1.2 V" -to {HEX4[*]}
+set_instance_assignment -name IO_STANDARD "1.2 V" -to {HEX5[*]}

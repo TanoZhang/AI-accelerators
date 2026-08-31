@@ -1,0 +1,11 @@
+work/
+transcript
+modelsim.ini
+verification/logs/
+verification/results/rtl_trace.vcd
+verification/results/figures/*.svg
+tb/generated/
+__pycache__/
+*.pyc
+fpga/de25_standard/build*/
+tmp/
