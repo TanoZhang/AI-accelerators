@@ -15,6 +15,11 @@ SystemVerilog implementation of a small matrix-multiply accelerator.
 The operand path reads one activation vector and one weight vector in parallel.
 A small FIFO keeps the MAC input stable when the downstream logic stalls.
 
+The older lane-at-a-time feeder is still available as a build option. It is
+used as a baseline, not as a second accelerator. Both builds run the same data
+through the rest of the design. The counter comparison is in
+[feeder_comparison.md](verification/results/feeder_comparison.md).
+
 ## Verification
 
 The RTL is tested at module and system level. System tests use a Python

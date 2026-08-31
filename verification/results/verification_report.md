@@ -10,7 +10,7 @@ Each job is programmed through APB and runs through DMA, scratchpads, the 4×4 M
 
 | Area | Coverage |
 |---|---|
-| Several matrix multiplications | 11 directed jobs plus 53 deterministic constrained-random jobs |
+| Several matrix multiplications | 12 directed jobs plus 52 deterministic constrained-random jobs |
 | Dimensions not divisible by four | Shapes from 1 through 15, including edge-heavy M/N/K values and multi-tile matrices |
 | Negative INT8 values | Mixed signed random vectors and explicit -128 operand |
 | Saturation | Dedicated positive-to-127 and negative-to--128 cases |
@@ -31,6 +31,7 @@ MAC utilization is `useful MACs / (16 × PERF_MAC_CYCLES)`. Operations per cycle
 |---|---:|---|---|---:|---:|---:|---:|---:|---:|---:|
 | `signed_min_1x1_int32` | 1×1×1 | INT32 | zero-wait | 44 | 1 | 9 | 11 | 0 | 6.250% | 0.045455 |
 | `basic_2x2_int32` | 2×2×2 | INT32 | zero-wait | 90 | 2 | 10 | 56 | 0 | 25.000% | 0.177778 |
+| `fpga_ab_8x8x8_int32` | 8×8×8 | INT32 | zero-wait | 795 | 32 | 67 | 704 | 0 | 100.000% | 1.288050 |
 | `edge_5x3x7_int32` | 5×3×7 | INT32 | zero-wait | 441 | 14 | 32 | 385 | 0 | 46.875% | 0.476190 |
 | `edge_3x5x5_quant_shift2` | 3×5×5 | INT8 | zero-wait | 304 | 10 | 30 | 250 | 0 | 46.875% | 0.493421 |
 | `positive_saturation` | 4×4×8 | INT8 | zero-wait | 312 | 8 | 16 | 272 | 0 | 100.000% | 0.820513 |
@@ -49,7 +50,7 @@ DMA dominates latency because requests transfer one word at a time and load, com
 
 The active datapath uses replicated four-read-port INT8 operand scratchpads and a two-entry elastic feeder FIFO. This removes the former lane-by-lane operand fetch bottleneck while preserving ready/valid backpressure behavior.
 
-The table shows 11 directed cases. `performance.csv` contains all 64 jobs, including 53 fixed-seed random cases.
+The table shows 12 directed cases. `performance.csv` contains all 64 jobs, including 52 fixed-seed random cases.
 
 ## Files
 
@@ -58,6 +59,7 @@ The table shows 11 directed cases. `performance.csv` contains all 64 jobs, inclu
 - `verification/results/figures/rtl-waveform-backpressured-5x5.csv`: plotted signal transitions
 - `verification/results/rtl_trace.vcd`: source waveform
 - `verification/results/performance.csv` and `verification/results/error_scenarios.csv`: raw results
+- `verification/results/feeder_comparison.csv`: scalar/parallel A/B counters
 
 Figure captions are stored with the PNG files.
 
@@ -87,7 +89,7 @@ Figure captions are stored with the PNG files.
 - `tb_requant_relu`: PASS (32512 self-checks)
 - `tb_scratchpad_sram`: PASS (493 self-checks)
 - `tb_simple_dma`: PASS (372 self-checks, 42 request stalls, 298 response wait cycles)
-- `tb_de25_standard_selftest_top`: PASS (3 self-checks, 78 cycles)
+- `tb_de25_standard_selftest_top`: PASS (67 self-checks, 1037 cycles, parallel=0)
 
 The Python model has six tests for signed GEMM, saturation, shifts, ReLU, INT32 wrapping, and test-vector bounds.
 

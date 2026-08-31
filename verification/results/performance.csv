@@ -1,6 +1,7 @@
 case,M,N,K,output_mode,relu,quant_shift,memory_profile,case_class,total_cycles,mac_cycles,compute_cycles,dma_cycles,stall_cycles,mac_utilization_pct,effective_ops_per_cycle
 signed_min_1x1_int32,1,1,1,INT32,disabled,0,zero-wait,directed-benchmark,44,1,9,11,0,6.250,0.045455
 basic_2x2_int32,2,2,2,INT32,disabled,0,zero-wait,directed-benchmark,90,2,10,56,0,25.000,0.177778
+fpga_ab_8x8x8_int32,8,8,8,INT32,disabled,0,zero-wait,directed-benchmark,795,32,67,704,0,100.000,1.288050
 edge_5x3x7_int32,5,3,7,INT32,disabled,0,zero-wait,directed-benchmark,441,14,32,385,0,46.875,0.476190
 edge_3x5x5_quant_shift2,3,5,5,INT8,disabled,2,zero-wait,directed-benchmark,304,10,30,250,0,46.875,0.493421
 positive_saturation,4,4,8,INT8,disabled,0,zero-wait,directed-benchmark,312,8,16,272,0,100.000,0.820513
@@ -62,4 +63,3 @@ stress_48_9x9x1,9,9,1,INT32,disabled,31,zero-wait,constrained-random-stress,925,
 stress_49_1x5x12,1,5,12,INT8,disabled,0,stalled-1,constrained-random-stress,689,24,39,626,77,15.625,0.174165
 stress_50_4x10x4,4,10,4,INT32,enabled,1,zero-wait,constrained-random-stress,438,12,46,368,0,83.333,0.730594
 stress_51_1x3x5,1,3,5,INT8,enabled,2,zero-wait,constrained-random-stress,135,5,13,98,0,18.750,0.222222
-stress_52_10x7x12,10,7,12,INT32,disabled,3,zero-wait,constrained-random-stress,1649,72,115,1510,0,72.917,1.018799

@@ -129,6 +129,79 @@ def write_csv(path: Path, metrics: list[Metric]) -> None:
             )
 
 
+def pair_metrics(
+    parallel: list[Metric], scalar: list[Metric]
+) -> list[tuple[Metric, Metric]]:
+    scalar_by_name = {metric.name: metric for metric in scalar}
+    pairs: list[tuple[Metric, Metric]] = []
+    for parallel_metric in parallel:
+        scalar_metric = scalar_by_name.get(parallel_metric.name)
+        if scalar_metric is None:
+            raise SystemExit(f"scalar result is missing {parallel_metric.name}")
+        if (parallel_metric.m, parallel_metric.n, parallel_metric.k) != (
+            scalar_metric.m, scalar_metric.n, scalar_metric.k
+        ):
+            raise SystemExit(f"shape mismatch for {parallel_metric.name}")
+        pairs.append((parallel_metric, scalar_metric))
+    return pairs
+
+
+def write_comparison_csv(
+    path: Path, pairs: list[tuple[Metric, Metric]]
+) -> None:
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(
+            [
+                "case", "M", "N", "K",
+                "scalar_total_cycles", "parallel_total_cycles", "total_speedup",
+                "scalar_compute_cycles", "parallel_compute_cycles", "compute_speedup",
+                "scalar_dma_cycles", "parallel_dma_cycles",
+            ]
+        )
+        for parallel, scalar in pairs:
+            writer.writerow(
+                [
+                    parallel.name, parallel.m, parallel.n, parallel.k,
+                    scalar.total_cycles, parallel.total_cycles,
+                    f"{scalar.total_cycles / parallel.total_cycles:.6f}",
+                    scalar.compute_cycles, parallel.compute_cycles,
+                    f"{scalar.compute_cycles / parallel.compute_cycles:.6f}",
+                    scalar.dma_cycles, parallel.dma_cycles,
+                ]
+            )
+
+
+def write_comparison_report(
+    path: Path, pairs: list[tuple[Metric, Metric]]
+) -> None:
+    parallel, scalar = next(
+        pair for pair in pairs if pair[0].name == "fpga_ab_8x8x8_int32"
+    )
+    total_speedup = scalar.total_cycles / parallel.total_cycles
+    compute_speedup = scalar.compute_cycles / parallel.compute_cycles
+    lines = [
+        "# Operand feeder A/B comparison",
+        "",
+        "The two simulations use the same APB setup, DMA model, scratchpads, "
+        "4x4 MAC array, and 8x8x8 signed INT8 input. The top-level "
+        "`USE_PARALLEL_FEEDER` parameter is the only design change.",
+        "",
+        "| Metric | Scalar | Parallel | Speedup |",
+        "|---|---:|---:|---:|",
+        f"| Total accelerator cycles | {scalar.total_cycles} | {parallel.total_cycles} | {total_speedup:.2f}x |",
+        f"| Compute cycles | {scalar.compute_cycles} | {parallel.compute_cycles} | {compute_speedup:.2f}x |",
+        f"| DMA cycles | {scalar.dma_cycles} | {parallel.dma_cycles} | 1.00x |",
+        "",
+        "Both versions produced the same 64 INT32 outputs and passed the full "
+        "reference-model suite. DMA time is unchanged, so the total speedup is "
+        "smaller than the compute-path speedup.",
+        "",
+        "All per-case counter values are in `feeder_comparison.csv`.",
+    ]
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 def write_report(
     path: Path,
     passes: dict[str, str],
@@ -211,6 +284,7 @@ def write_report(
             "- `verification/results/figures/rtl-waveform-backpressured-5x5.csv`: plotted signal transitions",
             "- `verification/results/rtl_trace.vcd`: source waveform",
             "- `verification/results/performance.csv` and `verification/results/error_scenarios.csv`: raw results",
+            "- `verification/results/feeder_comparison.csv`: scalar/parallel A/B counters",
             "",
             "Figure captions are stored with the PNG files.",
             "",
@@ -259,9 +333,14 @@ def main() -> None:
 
     passes = read_passes(args.logs)
     metrics = read_metrics(args.logs / "tb_end_to_end.log")
+    scalar_metrics = read_metrics(args.logs / "tb_end_to_end_scalar.log")
     error_scenarios = read_error_scenarios(args.logs / "tb_end_to_end_errors.log")
     if len(metrics) != 64:
         raise SystemExit(f"expected 64 METRIC records, found {len(metrics)}")
+    if len(scalar_metrics) != 64:
+        raise SystemExit(
+            f"expected 64 scalar METRIC records, found {len(scalar_metrics)}"
+        )
     if "tb_end_to_end" not in passes:
         raise SystemExit("end-to-end PASS signature is missing")
     if "tb_end_to_end_errors" not in passes:
@@ -269,7 +348,10 @@ def main() -> None:
     if len(error_scenarios) != 6:
         raise SystemExit(f"expected 6 error scenarios, found {len(error_scenarios)}")
 
+    pairs = pair_metrics(metrics, scalar_metrics)
     write_csv(args.output / "performance.csv", metrics)
+    write_comparison_csv(args.output / "feeder_comparison.csv", pairs)
+    write_comparison_report(args.output / "feeder_comparison.md", pairs)
     write_error_csv(args.output / "error_scenarios.csv", error_scenarios)
     write_report(
         args.output / "verification_report.md",

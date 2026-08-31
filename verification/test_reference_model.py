@@ -37,7 +37,7 @@ class ReferenceModelTests(unittest.TestCase):
     def test_stress_suite_is_balanced_and_fits_scratchpads(self) -> None:
         cases = verification_cases()
         self.assertEqual(len(cases), 64)
-        self.assertEqual(sum(case.benchmark for case in cases), 11)
+        self.assertEqual(sum(case.benchmark for case in cases), 12)
         self.assertTrue(any(case.output_int8 for case in cases))
         self.assertTrue(any(not case.output_int8 for case in cases))
         self.assertTrue(any(case.relu for case in cases))

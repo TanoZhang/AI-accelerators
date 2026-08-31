@@ -1,7 +1,9 @@
 `timescale 1ns/1ps
 
 // Full-system regression using Python-generated expected results.
-module tb_end_to_end;
+module tb_end_to_end #(
+  parameter bit USE_PARALLEL_FEEDER = 1'b1
+);
 
   localparam int unsigned APB_ADDR_W = 12;
   localparam int unsigned MEMORY_WORDS = 8192;
@@ -59,8 +61,9 @@ module tb_end_to_end;
   int unsigned checks;
 
   ai_accelerator_top #(
-    .APB_ADDR_W (APB_ADDR_W),
-    .SPAD_DEPTH (SPAD_DEPTH)
+    .APB_ADDR_W          (APB_ADDR_W),
+    .USE_PARALLEL_FEEDER (USE_PARALLEL_FEEDER),
+    .SPAD_DEPTH          (SPAD_DEPTH)
   ) dut (
     .clk           (clk),
     .rst_n         (rst_n),

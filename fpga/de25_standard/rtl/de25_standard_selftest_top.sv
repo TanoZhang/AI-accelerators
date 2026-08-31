@@ -1,5 +1,7 @@
-// Board self-test: run one 2x2 GEMM through APB/DMA and check C in hardware.
-module de25_standard_selftest_top (
+// Board self-test: run one signed 8x8 GEMM and check C in hardware.
+module de25_standard_selftest_top #(
+  parameter bit USE_PARALLEL_FEEDER = 1'b1
+) (
   input  logic        CLOCK_50,
   input  logic [3:0]  KEY,
   input  logic [9:0]  SW,
@@ -16,8 +18,8 @@ module de25_standard_selftest_top (
   localparam int unsigned SPAD_DEPTH  = 64;
   localparam int unsigned MEMORY_WORDS = 256;
   localparam logic [31:0] A_BASE = 32'h0000_0000;
-  localparam logic [31:0] B_BASE = 32'h0000_0040;
-  localparam logic [31:0] C_BASE = 32'h0000_0080;
+  localparam logic [31:0] B_BASE = 32'h0000_0100;
+  localparam logic [31:0] C_BASE = 32'h0000_0200;
   localparam int unsigned CONFIG_WRITES = 9;
 
   typedef enum logic [3:0] {
@@ -39,7 +41,7 @@ module de25_standard_selftest_top (
   selftest_state_e state_q;
   logic [4:0] boot_count_q;
   logic [3:0] config_index_q;
-  logic [1:0] check_index_q;
+  logic [5:0] check_index_q;
   logic [23:0] timeout_q;
   logic [31:0] cycle_count_q;
   logic [25:0] heartbeat_q;
@@ -88,9 +90,9 @@ module de25_standard_selftest_top (
 
   function automatic logic [31:0] config_data(input logic [3:0] index);
     case (index)
-      4'd0: return 32'd2;
-      4'd1: return 32'd2;
-      4'd2: return 32'd2;
+      4'd0: return 32'd8;
+      4'd1: return 32'd8;
+      4'd2: return 32'd8;
       4'd3: return A_BASE;
       4'd4: return B_BASE;
       4'd5: return C_BASE;
@@ -100,13 +102,23 @@ module de25_standard_selftest_top (
     endcase
   endfunction
 
-  function automatic logic [31:0] expected_result(input logic [1:0] index);
-    case (index)
-      2'd0: return 32'd19;
-      2'd1: return 32'd22;
-      2'd2: return 32'd43;
-      default: return 32'd50;
+  function automatic logic signed [31:0] row_value(input logic [2:0] row);
+    case (row)
+      3'd0: return -32'sd4;
+      3'd1: return -32'sd3;
+      3'd2: return -32'sd2;
+      3'd3: return -32'sd1;
+      3'd4: return  32'sd1;
+      3'd5: return  32'sd2;
+      3'd6: return  32'sd3;
+      default: return 32'sd4;
     endcase
+  endfunction
+
+  function automatic logic [31:0] expected_result(input logic [5:0] index);
+    logic signed [31:0] scaled;
+    scaled = row_value(index[5:3]) <<< 3;
+    return (index[2:0] < 3'd4) ? -scaled : scaled;
   endfunction
 
   // Hold the FSM in reset until Agilex device initialization is complete.
@@ -162,7 +174,8 @@ module de25_standard_selftest_top (
     led_status[1]   = (state_q == SELFTEST_FAIL);
     led_status[2]   = irq;
     led_status[3]   = mem_req_valid || mem_rsp_valid;
-    led_status[8:4] = SW[4:0];
+    led_status[4]   = USE_PARALLEL_FEEDER;
+    led_status[8:5] = SW[3:0];
     led_status[9]   = heartbeat_q[25];
 
     // DE25-Standard Rev.D red LEDs are active-low at the FPGA pins.
@@ -237,7 +250,7 @@ module de25_standard_selftest_top (
         SELFTEST_CHECK: begin
           if (debug_read_data != expected_result(check_index_q)) begin
             state_q <= SELFTEST_FAIL;
-          end else if (check_index_q == 2'd3) begin
+          end else if (check_index_q == 6'd63) begin
             state_q <= SELFTEST_PASS;
           end else begin
             check_index_q <= check_index_q + 1'b1;
@@ -254,8 +267,9 @@ module de25_standard_selftest_top (
   end
 
   ai_accelerator_top #(
-    .APB_ADDR_W (APB_ADDR_W),
-    .SPAD_DEPTH (SPAD_DEPTH)
+    .APB_ADDR_W          (APB_ADDR_W),
+    .USE_PARALLEL_FEEDER (USE_PARALLEL_FEEDER),
+    .SPAD_DEPTH          (SPAD_DEPTH)
   ) u_accelerator (
     .clk           (CLOCK_50),
     .rst_n         (rst_n),
@@ -344,17 +358,22 @@ module fpga_selftest_memory #(
       memory[index] = 32'd0;
     end
 
-    // A = [[1, 2], [3, 4]] at word address 0.
-    memory[0] = 32'd1;
-    memory[1] = 32'd2;
-    memory[2] = 32'd3;
-    memory[3] = 32'd4;
-
-    // B = [[5, 6], [7, 8]] at byte address 0x40.
-    memory[16] = 32'd5;
-    memory[17] = 32'd6;
-    memory[18] = 32'd7;
-    memory[19] = 32'd8;
+    // Each A row is constant; B selects its sign by column. This keeps the
+    // expected result simple while every output still uses eight signed MACs.
+    for (int unsigned row = 0; row < 8; row++) begin
+      for (int unsigned k_index = 0; k_index < 8; k_index++) begin
+        if (row < 4) begin
+          memory[(row * 8) + k_index] = row - 4;
+        end else begin
+          memory[(row * 8) + k_index] = row - 3;
+        end
+      end
+    end
+    for (int unsigned k_index = 0; k_index < 8; k_index++) begin
+      for (int unsigned col = 0; col < 8; col++) begin
+        memory[64 + (k_index * 8) + col] = (col < 4) ? -32'sd1 : 32'sd1;
+      end
+    end
   end
 
   assign mem_req_ready  = !pending_q && !mem_rsp_valid;

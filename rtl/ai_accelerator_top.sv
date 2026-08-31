@@ -4,6 +4,7 @@ module ai_accelerator_top #(
   parameter int unsigned DATA_W     = 8,
   parameter int unsigned ACC_W      = 32,
   parameter int unsigned ARRAY_DIM  = 4,
+  parameter bit          USE_PARALLEL_FEEDER = 1'b1,
   parameter int unsigned SPAD_DEPTH = 1024,
   parameter int unsigned SPAD_ADDR_W = (SPAD_DEPTH > 1)
                                      ? $clog2(SPAD_DEPTH) : 1
@@ -304,39 +305,97 @@ module ai_accelerator_top #(
     .write_data (weight_write_data[DATA_W-1:0])
   );
 
-  parallel_operand_feeder #(
-    .DATA_W      (DATA_W),
-    .DIM_W       (DIM_W),
-    .ARRAY_DIM   (ARRAY_DIM),
-    .SPAD_DEPTH  (SPAD_DEPTH),
-    .SPAD_ADDR_W (SPAD_ADDR_W)
-  ) u_operand_feeder (
-    .clk                   (clk),
-    .rst_n                 (core_rst_n),
-    .start_pulse           (feeder_start),
-    .m_dim                 (active_m),
-    .n_dim                 (active_n),
-    .k_dim                 (active_k),
-    .tile_row              (compute_tile_row),
-    .tile_col              (compute_tile_col),
-    .busy                  (feeder_busy),
-    .done_pulse            (feeder_done),
-    .activation_read_en    (activation_read_en),
-    .activation_read_addr  (activation_read_addr),
-    .activation_read_valid (activation_read_valid),
-    .activation_read_data  (activation_read_data),
-    .weight_read_en        (weight_read_en),
-    .weight_read_addr      (weight_read_addr),
-    .weight_read_valid     (weight_read_valid),
-    .weight_read_data      (weight_read_data),
-    .compute_valid         (feeder_compute_valid),
-    .compute_ready         (feeder_compute_ready),
-    .a_vec                 (a_vec),
-    .b_vec                 (b_vec),
-    .row_mask              (feeder_row_mask),
-    .col_mask              (feeder_col_mask),
-    .last_k                (feeder_last_k)
-  );
+  generate
+    if (USE_PARALLEL_FEEDER) begin : gen_parallel_feeder
+      parallel_operand_feeder #(
+        .DATA_W      (DATA_W),
+        .DIM_W       (DIM_W),
+        .ARRAY_DIM   (ARRAY_DIM),
+        .SPAD_DEPTH  (SPAD_DEPTH),
+        .SPAD_ADDR_W (SPAD_ADDR_W)
+      ) u_operand_feeder (
+        .clk                   (clk),
+        .rst_n                 (core_rst_n),
+        .start_pulse           (feeder_start),
+        .m_dim                 (active_m),
+        .n_dim                 (active_n),
+        .k_dim                 (active_k),
+        .tile_row              (compute_tile_row),
+        .tile_col              (compute_tile_col),
+        .busy                  (feeder_busy),
+        .done_pulse            (feeder_done),
+        .activation_read_en    (activation_read_en),
+        .activation_read_addr  (activation_read_addr),
+        .activation_read_valid (activation_read_valid),
+        .activation_read_data  (activation_read_data),
+        .weight_read_en        (weight_read_en),
+        .weight_read_addr      (weight_read_addr),
+        .weight_read_valid     (weight_read_valid),
+        .weight_read_data      (weight_read_data),
+        .compute_valid         (feeder_compute_valid),
+        .compute_ready         (feeder_compute_ready),
+        .a_vec                 (a_vec),
+        .b_vec                 (b_vec),
+        .row_mask              (feeder_row_mask),
+        .col_mask              (feeder_col_mask),
+        .last_k                (feeder_last_k)
+      );
+    end else begin : gen_scalar_feeder
+      logic scalar_activation_read_en;
+      logic [SPAD_ADDR_W-1:0] scalar_activation_read_addr;
+      logic scalar_weight_read_en;
+      logic [SPAD_ADDR_W-1:0] scalar_weight_read_addr;
+
+      // The baseline uses port zero only. DMA, memories, and the MAC array stay
+      // unchanged so the comparison isolates operand delivery.
+      always_comb begin
+        activation_read_en = '0;
+        weight_read_en     = '0;
+        for (int unsigned lane = 0; lane < ARRAY_DIM; lane++) begin
+          activation_read_addr[lane] = '0;
+          weight_read_addr[lane]     = '0;
+        end
+        activation_read_en[0]   = scalar_activation_read_en;
+        activation_read_addr[0] = scalar_activation_read_addr;
+        weight_read_en[0]       = scalar_weight_read_en;
+        weight_read_addr[0]     = scalar_weight_read_addr;
+      end
+
+      operand_feeder #(
+        .DATA_W      (DATA_W),
+        .DIM_W       (DIM_W),
+        .ARRAY_DIM   (ARRAY_DIM),
+        .SPAD_DEPTH  (SPAD_DEPTH),
+        .SPAD_ADDR_W (SPAD_ADDR_W)
+      ) u_operand_feeder (
+        .clk                   (clk),
+        .rst_n                 (core_rst_n),
+        .start_pulse           (feeder_start),
+        .m_dim                 (active_m),
+        .n_dim                 (active_n),
+        .k_dim                 (active_k),
+        .tile_row              (compute_tile_row),
+        .tile_col              (compute_tile_col),
+        .busy                  (feeder_busy),
+        .done_pulse            (feeder_done),
+        .activation_read_en    (scalar_activation_read_en),
+        .activation_read_addr  (scalar_activation_read_addr),
+        .activation_read_valid (activation_read_valid[0]),
+        .activation_read_data  (activation_read_data[0]),
+        .weight_read_en        (scalar_weight_read_en),
+        .weight_read_addr      (scalar_weight_read_addr),
+        .weight_read_valid     (weight_read_valid[0]),
+        .weight_read_data      (weight_read_data[0]),
+        .compute_valid         (feeder_compute_valid),
+        .compute_ready         (feeder_compute_ready),
+        .a_vec                 (a_vec),
+        .b_vec                 (b_vec),
+        .row_mask              (feeder_row_mask),
+        .col_mask              (feeder_col_mask),
+        .last_k                (feeder_last_k)
+      );
+    end
+  endgenerate
 
   compute_controller #(
     .DIM_W     (DIM_W),

@@ -2,6 +2,8 @@
 param(
     [string]$Device = 'A5ED013BB32AE4SCS',
     [string]$QuartusRoot,
+    [ValidateSet('Parallel', 'Scalar')]
+    [string]$Feeder = 'Parallel',
     [switch]$Compile
 )
 
@@ -47,6 +49,7 @@ function Find-QuartusShell {
 $quartusShell = Find-QuartusShell -RequestedRoot $QuartusRoot
 Write-Host "Using Quartus: $quartusShell"
 Write-Host "Target device: $Device (DE25-Standard Rev.D)"
+Write-Host "Operand feeder: $Feeder"
 
 $quartusBin = Split-Path -Parent $quartusShell
 $quartusDirectory = Split-Path -Parent $quartusBin
@@ -56,7 +59,8 @@ if (-not (Test-Path -LiteralPath $ipDeploy)) {
     throw "Reset Release IP generator was not found at '$ipDeploy'."
 }
 
-$projectDirectory = Join-Path $scriptDirectory 'build_cli'
+$feederName = $Feeder.ToLowerInvariant()
+$projectDirectory = Join-Path $scriptDirectory ("build_" + $feederName)
 $resetReleaseDirectory = Join-Path $projectDirectory 'ip\reset_release'
 New-Item -ItemType Directory -Path $resetReleaseDirectory -Force | Out-Null
 
@@ -78,6 +82,7 @@ if (-not (Test-Path -LiteralPath $resetReleaseIp)) {
 $env:DE25_DEVICE = $Device
 $env:DE25_PROJECT_DIR = $projectDirectory
 $env:DE25_RESET_RELEASE_IP = $resetReleaseIp
+$env:DE25_USE_PARALLEL_FEEDER = if ($Feeder -eq 'Parallel') { '1' } else { '0' }
 & $quartusShell -t (Join-Path $scriptDirectory 'create_project.tcl')
 if ($LASTEXITCODE -ne 0) {
     throw 'Quartus project creation failed.'

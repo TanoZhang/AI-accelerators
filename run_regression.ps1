@@ -92,18 +92,21 @@ function Invoke-Simulation {
     param(
         [Parameter(Mandatory)]
         [string]$Testbench,
-        [string]$DoCommand = 'run -all; quit -code 0'
+        [string]$DoCommand = 'run -all; quit -code 0',
+        [string]$LogName = $Testbench,
+        [string]$PassSignature = $Testbench,
+        [string[]]$VsimArguments = @()
     )
 
-    $logPath = Join-Path $logDirectory ($Testbench + '.log')
-    & vsim -c -lib work $Testbench -l $logPath -do $DoCommand
+    $logPath = Join-Path $logDirectory ($LogName + '.log')
+    & vsim -c -lib work @VsimArguments $Testbench -l $logPath -do $DoCommand
     if ($LASTEXITCODE -ne 0) {
         throw "$Testbench returned a non-zero simulator status. See $logPath"
     }
     if (Select-String -LiteralPath $logPath -Pattern '^# \*\* (Error|Fatal):' -Quiet) {
         throw "$Testbench reported a simulation error. See $logPath"
     }
-    if (-not (Select-String -LiteralPath $logPath -Pattern ("# " + $Testbench + " PASS") -Quiet)) {
+    if (-not (Select-String -LiteralPath $logPath -Pattern ("# " + $PassSignature + " PASS") -Quiet)) {
         throw "$Testbench did not emit its PASS signature. See $logPath"
     }
 }
@@ -127,16 +130,26 @@ $unitTests = @(
     'tb_de25_standard_selftest_top'
 )
 
-Write-Host "[4/7] Running 15 RTL unit regressions and 1 FPGA self-test regression"
+Write-Host '[4/7] Running module and FPGA self-test regressions'
 foreach ($test in $unitTests) {
     Write-Host "  $test"
     Invoke-Simulation -Testbench $test
 }
+Write-Host '  tb_de25_standard_selftest_top (scalar baseline)'
+Invoke-Simulation -Testbench 'tb_de25_standard_selftest_top' `
+    -LogName 'tb_de25_standard_selftest_top_scalar' `
+    -PassSignature 'tb_de25_standard_selftest_top' `
+    -VsimArguments @('-gUSE_PARALLEL_FEEDER=0')
 
 Write-Host '[5/7] Running integrated negative-path and recovery regression'
 Invoke-Simulation -Testbench 'tb_end_to_end_errors'
 
-Write-Host '[6/7] Running 64 Python-referenced jobs with RTL waveform capture'
+Write-Host '[6/7] Running the full-system suite with both operand feeders'
+Invoke-Simulation -Testbench 'tb_end_to_end' `
+    -LogName 'tb_end_to_end_scalar' `
+    -PassSignature 'tb_end_to_end' `
+    -VsimArguments @('-gUSE_PARALLEL_FEEDER=0')
+
 $waveDo = @(
     'vcd file verification/results/rtl_trace.vcd',
     'vcd add /tb_end_to_end/dut/accel_busy',
@@ -174,7 +187,8 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host ''
-Write-Host 'PASS: reference model, 15 unit benches, 1 FPGA self-test bench, 64 end-to-end jobs, and 6 error scenarios'
+Write-Host 'PASS: reference model, RTL benches, both feeder modes, and error recovery'
 Write-Host 'Report: verification/results/verification_report.md'
 Write-Host 'Metrics: verification/results/performance.csv'
+Write-Host 'A/B data: verification/results/feeder_comparison.csv'
 Write-Host 'Figures: verification/results/figures/'

@@ -110,6 +110,14 @@ def benchmark_cases() -> list[VerificationCase]:
             (1, 2, 3, 4), (5, 6, 7, 8), benchmark=True,
         ),
         VerificationCase(
+            "fpga_ab_8x8x8_int32", 8, 8, 8, False, False, 0, 0, 0,
+            tuple(value for value in (-4, -3, -2, -1, 1, 2, 3, 4)
+                  for _ in range(8)),
+            tuple(-1 if col < 4 else 1
+                  for _ in range(8) for col in range(8)),
+            benchmark=True,
+        ),
+        VerificationCase(
             "edge_5x3x7_int32", 5, 3, 7, False, False, 0, 0, 2,
             _random_values(5 * 7, 0x537A), _random_values(7 * 3, 0x537B),
             benchmark=True,
@@ -156,7 +164,7 @@ def benchmark_cases() -> list[VerificationCase]:
     ]
 
 
-def stress_cases(count: int = 53) -> list[VerificationCase]:
+def stress_cases(count: int = 52) -> list[VerificationCase]:
     """Deterministic constrained-random jobs that fit all three scratchpads."""
     generator = random.Random(0xACC3_51)
     shifts = (0, 1, 2, 3, 7, 15, 31)
@@ -200,7 +208,7 @@ def stress_cases(count: int = 53) -> list[VerificationCase]:
 
 
 def verification_cases() -> list[VerificationCase]:
-    """64 jobs: 11 directed benchmarks plus 53 constrained-random stress jobs."""
+    """64 jobs with directed benchmarks and constrained-random stress jobs."""
     return benchmark_cases() + stress_cases()
 
 
