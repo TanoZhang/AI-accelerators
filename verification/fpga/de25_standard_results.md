@@ -1,52 +1,41 @@
 # DE25-Standard results
 
-## Setup
+The test was run on a DE25-Standard Rev.D with the FPGA clocked at 50 MHz. Both
+SOF files use the same 8x8x8 signed INT8 data, APB setup, DMA memory, output
+checker, and clock constraint. `USE_PARALLEL_FEEDER` is the only RTL parameter
+that changes.
 
-| Field | Value |
-|---|---|
-| Board | Terasic DE25-Standard Rev.D |
-| FPGA | `A5ED013BB32AE4SCS` |
-| Quartus Prime Pro | 26.1.1 Build 130 |
-| Programmer | On-board USB-Blaster III |
-| Test date | 2026-08-29 |
-| SOF checksum | `0x0608B59E` |
+## Board run
 
-## Timing and resources
+| Feeder | Lit status LEDs | HEX cycle count | Cycles |
+|---|---|---:|---:|
+| Scalar | `LEDR0`, `LEDR2` | `00040d` | 1037 |
+| Parallel | `LEDR0`, `LEDR2`, `LEDR4` | `00031b` | 795 |
 
-| Metric | Result |
-|---|---:|
-| Clock | 50.000 MHz |
-| Fitter | PASS, 0 errors |
-| Worst setup slack | +14.402 ns |
-| Worst hold slack | +0.099 ns |
-| Reported Fmax | 178.64 MHz |
-| ALMs | 2,994 / 46,800 (6%) |
-| Registers | 5,154 / 187,200 (2.8%) |
-| DSP blocks | 21 / 376 (6%) |
-| M20Ks | 9 / 358 (3%) |
-| Embedded memory | 6,144 / 7,331,840 bits (<1%) |
-| Pins | 67 / 414 (16%) |
+`LEDR0` is raised only after the on-chip checker has compared all 64 INT32
+outputs. `LEDR2` is the completion interrupt and `LEDR4` identifies the
+parallel build.
 
-The worst setup path is from
-`u_accelerator|u_output_tile_writer|position_q[0]` to
-`u_accelerator|u_output_sram|read_data[6]`.
+The measured end-to-end speedup is `1037 / 795 = 1.30x`. This includes both
+input loads and output writeback. RTL counters show why the number is not
+larger: compute falls from 309 to 67 cycles, while DMA remains 704 cycles in
+both builds.
 
-The 4x4 MAC array uses 16 DSP blocks. The parallel feeder uses four, and the
-output tile writer uses one. The accelerator scratchpads infer nine dual-port
-M20Ks. The small board-test DMA memory has an asynchronous debug read and is
-implemented in logic.
+## Quartus results
 
-## Board test
+Both images completed fitting and timing analysis with no timing violations.
 
-The self-test completed one 2x2 signed INT8 matrix multiply and checked all four
-INT32 results in hardware.
+| Result | Scalar | Parallel |
+|---|---:|---:|
+| Fmax | 181.29 MHz | 186.81 MHz |
+| Worst setup slack at 50 MHz | +14.484 ns | +14.647 ns |
+| Worst hold slack | +0.096 ns | +0.101 ns |
+| ALMs | 4,310 | 3,850 |
+| Registers | 7,149 | 6,692 |
+| DSP blocks | 21 | 21 |
+| M20K blocks | 1 | 9 |
 
-| Output | Observed |
-|---|---|
-| `LEDR[0]` PASS | On |
-| `LEDR[1]` FAIL | Off |
-| `LEDR[2]` completion IRQ | On |
-| `LEDR[9]` heartbeat | Blinking |
-| `HEX5..HEX0` cycle count | `00004E` (78 cycles) |
+The parallel scratchpad copies map to M20Ks. In the scalar build only port zero
+is used, and Quartus implements the small operand memories in logic instead.
 
-Power Analyzer and Signal Tap measurements were not collected for this run.
+The board was left running the parallel image after the comparison.

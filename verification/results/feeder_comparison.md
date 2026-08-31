@@ -10,4 +10,4 @@ The two simulations use the same APB setup, DMA model, scratchpads, 4x4 MAC arra
 
 Both versions produced the same 64 INT32 outputs and passed the full reference-model suite. DMA time is unchanged, so the total speedup is smaller than the compute-path speedup.
 
-All per-case counter values are in `feeder_comparison.csv`.
+All per-case counter values are in `feeder_comparison.csv`. The matching DE25 board run is recorded in `../fpga/de25_standard_results.md`.
