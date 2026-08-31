@@ -13,6 +13,9 @@ For the 8x8x8 FPGA test, RTL simulation measured 309 compute cycles with the
 scalar feeder and 67 with the parallel feeder. End-to-end time changed from
 1037 to 795 cycles because both runs still spend 704 cycles in DMA.
 
+The two DE25 builds showed the same total counts on the seven-segment display:
+`040d` for scalar and `031b` for parallel.
+
 The full per-case data is generated in
 `verification/results/feeder_comparison.csv`. The useful point here is not that
 every workload becomes five times faster. Operand delivery became faster, but

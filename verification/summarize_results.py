@@ -197,7 +197,8 @@ def write_comparison_report(
         "reference-model suite. DMA time is unchanged, so the total speedup is "
         "smaller than the compute-path speedup.",
         "",
-        "All per-case counter values are in `feeder_comparison.csv`.",
+        "All per-case counter values are in `feeder_comparison.csv`. The matching "
+        "DE25 board run is recorded in `../fpga/de25_standard_results.md`.",
     ]
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
