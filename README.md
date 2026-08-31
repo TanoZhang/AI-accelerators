@@ -1,7 +1,8 @@
 # 4x4 INT8 matrix accelerator
 
-> Homework branch: several RTL bodies are intentionally unfinished. Start with
-> [HOMEWORK.md](HOMEWORK.md). The complete implementation is on `main`.
+> Homework branch: `rtl/` contains specification comments only. Start with
+> [HOMEWORK.md](HOMEWORK.md) and create every package, module, and port yourself.
+> The complete implementation is on `main`.
 
 SystemVerilog implementation of a small matrix-multiply accelerator.
 

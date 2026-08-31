@@ -1,74 +1,106 @@
-# RTL homework branch
+# 4x4 INT8 accelerator homework
 
-This branch is intentionally incomplete. The module ports, integration code,
-testbenches, Python model, and FPGA build files are left in place. Five RTL
-blocks contain `TODO` markers for you to implement.
+This branch is a specification-only starter. Files under `rtl/` contain no
+module declarations, ports, state machines, or datapath code. Each file tells
+you what must be built. The complete implementation remains on `main`.
 
-Use `main` as the finished version, but try the tests first. The normal
-regression stops at the first unfinished block, so it also gives a reasonable
-work order:
+The provided material is the project harness:
 
-1. `rtl/mac_pe.sv`
-2. `rtl/parallel_operand_feeder.sv`
-3. `rtl/requant_relu.sv`
-4. `rtl/compute_controller.sv`
-5. `rtl/simple_dma.sv`
+- `tb/unit/` defines the cycle-level contract for each block.
+- `tb/integration/` checks the complete APB, DMA, compute, and error paths.
+- `verification/reference_model.py` supplies signed GEMM results and vectors.
+- `fpga/de25_standard/` contains the board wrapper, pin assignments, and build
+  flow. Do not start FPGA work until the RTL regression passes.
 
-Run this after each step:
+## Suggested order
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\run_regression.ps1
-```
+### Part 1: contracts and arithmetic
 
-## Notes
+1. Recreate `ai_accel_pkg.sv`: widths, CSR offsets, state types, DMA directions,
+   and error codes.
+2. Write `mac_pe.sv` and pass its signed arithmetic, reset, clear, enable, and
+   hold checks.
+3. Build `mac_array_4x4.sv` from 16 PEs. Avoid copying the PE behavior into the
+   array; instantiate it with generate loops.
+4. Write `requant_relu.sv`, including arithmetic shift, ReLU, and both signed
+   saturation limits.
 
-### MAC processing element
+### Part 2: local memories and operand movement
 
-The INT8 product is 16 bits. Sign-extend it before adding it to the wider
-accumulator. Reset has the highest priority, followed by `clear_acc`, then
-`mac_en`. When neither control is active, the accumulator must hold its value.
+5. Implement one-read-port `scratchpad_sram.sv` with the required collision
+   behavior.
+6. Implement `multi_read_scratchpad.sv`. Decide how one write is reflected into
+   four independently addressed read copies.
+7. Write the scalar `operand_feeder.sv` first. It is slower, but its FSM makes
+   address generation and edge masks easier to debug.
+8. Write `parallel_operand_feeder.sv` with registered RAM responses, a two-entry
+   elastic buffer, and stable ready/valid output under backpressure.
+9. Implement `output_tile_writer.sv` to serialize one 4x4 result tile, skip
+   masked cells, and select INT8 or INT32 output formatting.
 
-### Parallel operand feeder
+### Part 3: controllers and data transfer
 
-For lane `i`, A comes from `(tile_row + i) * K + k`; B comes from
-`k * N + tile_col + i`. Lanes outside M or N are masked and return zero.
+10. Implement `compute_controller.sv`. It owns tile traversal, accumulator
+    clearing, K-beat counting, result capture, and output handshakes.
+11. Implement `simple_dma.sv` as a single-outstanding-transaction engine for A
+    loads, B loads, and C stores. Validate the complete transfer before the
+    first request.
+12. Implement `accel_controller.sv` to sequence load A, load B, compute, and
+    store C, while reporting the first error precisely.
 
-The scratchpad response is registered. A request therefore cannot be treated
-as data in the same cycle. The testbench also stalls `compute_ready`, so keep
-the output vector and control fields stable until the transfer is accepted.
-The finished design uses two entries: one can feed the MAC while the next RAM
-response is being stored.
+### Part 4: programming model
 
-### Requantization and ReLU
+13. Write `accel_status_irq.sv` with sticky done/error state and write-one-to-
+    clear interrupt bits.
+14. Write `perf_counters.sv` for total, compute, MAC, DMA, and stall cycles.
+15. Implement `apb_accel_regs.sv`. Follow APB setup/access timing, byte strobes,
+    read-only fields, start pulses, soft reset, and invalid-address errors.
+16. Connect the complete design in `ai_accelerator_top.sv`. Keep reset and error
+    ownership clear; avoid adding behavior that belongs inside a child module.
 
-Apply ReLU first, then an arithmetic right shift when quantization is enabled.
-Clamp the final value to the signed INT8 range. Check `-128` separately; writing
-`-8'sd128` is easy to get wrong because of literal sizing.
+### Part 5: system verification and FPGA
 
-### Compute controller
+17. Pass every unit bench without editing its expected values.
+18. Pass the full reference-model suite in scalar mode, then in parallel mode.
+19. Pass the negative-path regression and show that a clean job can run after
+    each injected error.
+20. Compile both DE25 feeder variants at 50 MHz and record timing and resources.
+21. Program both SOF files, record the hardware counter shown on HEX, and explain
+    why compute speedup is larger than end-to-end speedup.
 
-One tile covers four rows by four columns. A tile needs a clear cycle, a feeder
-start pulse, K accepted operand beats, and an output handshake. Capture the MAC
-array one clock after accepting the last operand so the last products are
-included. Hold `output_valid` and the tile data while `output_ready` is low.
+## Graduate-scale extensions
 
-### DMA
+Choose two or three after the base design works. These are intentionally not
+wired into the starter because defining the interface is part of the exercise.
 
-Keep only one external transaction outstanding. A load request is followed by
-a response that writes either the activation or weight scratchpad. A store
-first reads the output scratchpad, then sends the memory write.
+22. Replace single-word DMA with a small burst engine and compare request
+    overhead, buffering cost, and total cycles.
+23. Add ping-pong activation and weight buffers so DMA can overlap compute.
+24. Add a small command queue that accepts several GEMM descriptors through
+    APB and raises one interrupt per completed descriptor.
+25. Add per-output-channel bias before quantization. Define its memory layout
+    and extend the Python reference rather than hard-coding constants.
+26. Make `ARRAY_DIM` genuinely parameterized and verify at least 2x2 and 4x4
+    configurations with the same source.
+27. Add assertion-based checks for ready/valid stability, bounded progress,
+    legal state transitions, address bounds, and no writes outside C.
+28. Add functional coverage for matrix edge sizes, saturation, ReLU, DMA stalls,
+    and each recovery path. Explain which bins are meaningful instead of only
+    reporting a percentage.
+29. Capture a Signal Tap trace on the FPGA showing feeder activity, MAC enable,
+    DMA activity, and completion. Relate the trace to the counter values.
+30. Compare one architectural change using identical data and clock settings.
+    Report both its benefit and the resource or timing cost.
 
-Reject a zero length, an unaligned byte address, a scratchpad overrun, or a
-32-bit memory-address wrap before issuing any request. Once `mem_req_valid` is
-raised, its payload must not change until `mem_req_ready` is high.
+## What to submit
 
-## Useful places to inspect
+- Your RTL and any new tests.
+- A block diagram and a short register map.
+- Regression logs showing the reference-model and error-path results.
+- Quartus timing and resource summaries.
+- Scalar/parallel FPGA cycle measurements.
+- A short discussion of the bottleneck you found and what you would change next.
 
-- `verification/reference_model.py` defines the numerical result.
-- `tb/unit/` shows each block's timing contract.
-- `tb/integration/tb_end_to_end.sv` shows the APB-to-DMA-to-MAC path.
-- `rtl/operand_feeder.sv` is a simpler lane-at-a-time feeder and is useful when
-  writing the parallel version.
-
-Do not start with the FPGA build. Get the module tests and full-system test to
-pass first, then compile the parallel DE25 image.
+Keep a small design notebook while working. Record assumptions, failed ideas,
+and waveform observations. That material is more useful in an interview than a
+large final code dump with no explanation of how it was debugged.

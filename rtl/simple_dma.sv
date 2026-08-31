@@ -1,59 +1,34 @@
-module simple_dma #(
-  parameter int unsigned SPAD_DEPTH  = 1024,
-  parameter int unsigned SPAD_ADDR_W = (SPAD_DEPTH > 1) ? $clog2(SPAD_DEPTH) : 1
-) (
-  input  logic                              clk,
-  input  logic                              rst_n,
-  input  logic                              start,
-  input  ai_accel_pkg::dma_transfer_e       direction,
-  input  logic [31:0]                       src_addr,
-  input  logic [31:0]                       dst_addr,
-  input  logic [31:0]                       length_words,
-  output logic                              busy,
-  output logic                              done,
-  output logic                              error,
-  output logic                              mem_req_valid,
-  input  logic                              mem_req_ready,
-  output logic                              mem_req_write,
-  output logic [31:0]                       mem_req_addr,
-  output logic [31:0]                       mem_req_wdata,
-  output logic [3:0]                        mem_req_wstrb,
-  input  logic                              mem_rsp_valid,
-  output logic                              mem_rsp_ready,
-  input  logic [31:0]                       mem_rsp_rdata,
-  input  logic                              mem_rsp_error,
-  output logic                              activation_write_en,
-  output logic [SPAD_ADDR_W-1:0]            activation_write_addr,
-  output logic [31:0]                       activation_write_data,
-  output logic                              weight_write_en,
-  output logic [SPAD_ADDR_W-1:0]            weight_write_addr,
-  output logic [31:0]                       weight_write_data,
-  output logic                              output_read_en,
-  output logic [SPAD_ADDR_W-1:0]            output_read_addr,
-  input  logic                              output_read_valid,
-  input  logic [31:0]                       output_read_data
-);
-
-  // TODO: implement one outstanding transaction at a time.
-  // Validate the complete transfer before raising mem_req_valid.
-  always_comb begin
-    busy                  = 1'b0;
-    done                  = 1'b0;
-    error                 = 1'b0;
-    mem_req_valid         = 1'b0;
-    mem_req_write         = 1'b0;
-    mem_req_addr          = '0;
-    mem_req_wdata         = '0;
-    mem_req_wstrb         = '0;
-    mem_rsp_ready         = 1'b0;
-    activation_write_en   = 1'b0;
-    activation_write_addr = '0;
-    activation_write_data = '0;
-    weight_write_en       = 1'b0;
-    weight_write_addr     = '0;
-    weight_write_data     = '0;
-    output_read_en        = 1'b0;
-    output_read_addr      = '0;
-  end
-
-endmodule
+// Assignment: write module simple_dma.
+//
+// Parameters:
+//   SPAD_DEPTH and scratchpad address width.
+//
+// Command/status ports:
+//   clock/reset, start, a dma_transfer_e direction, 32-bit source/destination,
+//   word length, busy, done, and error.
+//
+// External memory request/response ports:
+//   req_valid/req_ready, write flag, byte address, write data, byte strobes,
+//   rsp_valid/rsp_ready, read data, and response error.
+//
+// Scratchpad ports:
+//   activation write enable/address/data; weight write enable/address/data; and
+//   output read enable/address with registered read-valid/data response.
+//
+// Support three transfers: memory to activation, memory to weight, and output
+// scratchpad to memory. Keep one external transaction outstanding. For loads,
+// hold the memory request until accepted, wait for its response, then pulse the
+// selected scratchpad write. For stores, request the output scratchpad word,
+// capture its registered response, issue a full-word external write, and wait
+// for the write response before advancing.
+//
+// Memory addresses are bytes and increase by four. Scratchpad addresses are
+// word indices and increase by one. Validate direction, nonzero length, word
+// alignment, complete memory-address range, and complete scratchpad range before
+// issuing the first request. Report read and write response errors through the
+// common error output and stop the transfer cleanly.
+//
+// Ready/valid payloads must remain stable under request stalls. Response-ready
+// must not consume an unrelated response. Pulse done only after the last
+// successful response. The testbench checks long request stalls, response
+// delays, exact address sequences, both error directions, and all bounds.
